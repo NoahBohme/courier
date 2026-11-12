@@ -1,0 +1,1070 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Courier</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23e8590c'/><path d='M9 16h12m-5-6 6 6-6 6' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<script>try { const t = localStorage.getItem('courier.theme'); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --border: #e1e4e8; --text: #1c2026; --muted: #6b7380;
+    --accent: #e8590c; --accent-soft: #e8590c1a; --accent-text: #fff; --input: #fff; --hover: #f0f2f5;
+    --ok: #2b8a3e; --warn: #c27c0e; --bad: #c92a2a;
+    --j-key: #1c5fb8; --j-str: #2b8a3e; --j-num: #b35c00; --j-bool: #8a3ffc; --j-null: #888;
+    --shadow: 0 10px 40px rgba(0,0,0,.18);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131519; --panel: #1b1e23; --border: #2b2f37; --text: #e3e6ea; --muted: #8b939f;
+      --accent-soft: #e8590c26; --input: #15171b; --hover: #242830;
+      --ok: #51cf66; --warn: #fcc419; --bad: #ff6b6b;
+      --j-key: #74c0fc; --j-str: #8ce99a; --j-num: #ffa94d; --j-bool: #d0bfff; --j-null: #999;
+      --shadow: 0 10px 40px rgba(0,0,0,.5);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131519; --panel: #1b1e23; --border: #2b2f37; --text: #e3e6ea; --muted: #8b939f;
+    --accent-soft: #e8590c26; --input: #15171b; --hover: #242830;
+    --ok: #51cf66; --warn: #fcc419; --bad: #ff6b6b;
+    --j-key: #74c0fc; --j-str: #8ce99a; --j-num: #ffa94d; --j-bool: #d0bfff; --j-null: #999;
+    --shadow: 0 10px 40px rgba(0,0,0,.5);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, Segoe UI, sans-serif; display: flex; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  input, select, textarea { background: var(--input); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  button { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+  button:hover { background: var(--hover); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button.primary:hover { filter: brightness(1.08); }
+  button.ghost { border-color: transparent; background: none; color: var(--muted); padding: 4px 8px; }
+  button.ghost:hover { color: var(--text); background: var(--hover); }
+  button.icon { border: none; background: none; padding: 2px 6px; color: var(--muted); }
+  button.icon:hover { color: var(--bad); }
+  code, .mono { font-family: var(--mono); }
+
+  /* sidebar */
+  aside { width: 270px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+  aside header { padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--border); display: flex; gap: 4px; align-items: center; }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; flex: 1; }
+  .logo i { width: 22px; height: 22px; border-radius: 6px; background: var(--accent); display: grid; place-items: center; color: #fff; font-style: normal; font-size: 13px; }
+  .side-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .side-tabs button { flex: 1; border: none; border-radius: 0; background: none; padding: 9px 4px; color: var(--muted); border-bottom: 2px solid transparent; font-size: 13px; }
+  .side-tabs button.active { color: var(--text); border-bottom-color: var(--accent); }
+  .badge { display: inline-block; min-width: 17px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--accent); color: #fff; font-size: 11px; line-height: 17px; text-align: center; }
+  .side-search { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .side-search input { width: 100%; padding: 5px 8px; font-size: 13px; }
+  .side-list { overflow: auto; flex: 1; }
+  .side-item { display: flex; align-items: center; gap: 8px; padding: 7px 12px; cursor: pointer; border-bottom: 1px solid var(--border); }
+  .side-item:hover { background: var(--hover); }
+  .side-item.active { background: var(--hover); box-shadow: inset 3px 0 var(--accent); }
+  .side-item.fresh { animation: fresh 1.2s ease-out; }
+  @keyframes fresh { from { background: var(--accent-soft); } }
+  .side-item .m { font: 700 11px var(--mono); width: 50px; flex-shrink: 0; }
+  .side-item .n { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .side-item .t { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .side-item .icon { visibility: hidden; }
+  .side-item:hover .icon { visibility: visible; }
+  .side-foot { padding: 6px 12px; text-align: right; border-bottom: 1px solid var(--border); }
+  .empty { color: var(--muted); padding: 24px 16px; text-align: center; }
+
+  /* main */
+  main { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .view { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .bar { display: flex; gap: 8px; padding: 8px 16px 12px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  .bar select { font-weight: 700; font-family: var(--mono); width: 110px; }
+  .bar #url { flex: 1; font-family: var(--mono); min-width: 0; }
+  .namebar { display: flex; gap: 4px; padding: 8px 16px 0; align-items: center; background: var(--panel); }
+  .namebar input { border: 1px solid transparent; background: transparent; font-weight: 600; flex: 1; padding: 4px 6px; min-width: 0; }
+  .namebar input:hover, .namebar input:focus { border-color: var(--border); background: var(--input); }
+
+  .split { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .pane { display: flex; flex-direction: column; min-height: 0; }
+  #reqPane { flex: 0 0 40%; }
+  #resPane { flex: 1; }
+  .resizer { height: 5px; flex-shrink: 0; cursor: row-resize; background: var(--border); background-clip: content-box; padding: 2px 0; }
+  .resizer:hover, .resizer.drag { background: var(--accent); padding: 1px 0; }
+  .tabs { display: flex; gap: 2px; padding: 0 16px; border-bottom: 1px solid var(--border); align-items: center; min-height: 39px; }
+  .tabs > button { border: none; border-radius: 0; background: none; padding: 10px 10px 8px; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs > button.active { color: var(--text); border-bottom-color: var(--accent); }
+  .tabs .count { font-size: 11px; color: var(--accent); margin-left: 3px; }
+  .tabs .spacer { flex: 1; }
+  .tab-body { flex: 1; overflow: auto; padding: 12px 16px; min-height: 0; }
+  .hidden { display: none !important; }
+
+  table.kv { width: 100%; border-collapse: collapse; }
+  table.kv td { padding: 2px 3px; }
+  table.kv td:first-child { width: 28px; text-align: center; }
+  table.kv input[type=text] { width: 100%; font-family: var(--mono); font-size: 13px; }
+  table.kv td:last-child { width: 30px; }
+  input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
+
+  .body-types { display: flex; gap: 14px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
+  .body-types label { display: flex; gap: 4px; align-items: center; cursor: pointer; }
+  textarea.code { width: 100%; height: calc(100% - 36px); min-height: 120px; font: 13px/1.5 var(--mono); resize: none; tab-size: 2; }
+
+  .status-line { display: flex; gap: 14px; font-size: 13px; color: var(--muted); align-items: center; }
+  .status-line b { color: var(--text); }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 10px; font-weight: 700; font-size: 12px; background: var(--hover); }
+  .s2 { color: var(--ok) !important; } .s3 { color: var(--warn) !important; } .s4, .s5, .serr { color: var(--bad) !important; }
+  .chip.s2 { background: color-mix(in srgb, var(--ok) 15%, transparent); }
+  .chip.s3 { background: color-mix(in srgb, var(--warn) 15%, transparent); }
+  .chip.s4, .chip.s5, .chip.serr { background: color-mix(in srgb, var(--bad) 15%, transparent); }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-right: 8px; }
+  .seg button { border: none; border-radius: 0; padding: 3px 9px; font-size: 12px; color: var(--muted); background: none; }
+  .seg button.on { background: var(--hover); color: var(--text); }
+  pre.out { margin: 0; font: 13px/1.5 var(--mono); white-space: pre-wrap; word-break: break-word; }
+  .jk { color: var(--j-key); } .js { color: var(--j-str); } .jn { color: var(--j-num); } .jb { color: var(--j-bool); } .jz { color: var(--j-null); }
+  table.hdrs { border-collapse: collapse; font: 13px var(--mono); }
+  table.hdrs td { padding: 3px 16px 3px 0; vertical-align: top; word-break: break-all; }
+  table.hdrs td:first-child { color: var(--muted); white-space: nowrap; }
+  .placeholder { color: var(--muted); display: flex; align-items: center; justify-content: center; height: 100%; text-align: center; line-height: 1.8; }
+  kbd { font: 11px var(--mono); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* webhooks */
+  .hook-head { padding: 16px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+  .hook-head h2 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .live { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+  .live.on { background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: pulse 2s infinite; }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+  .hook-url { display: flex; gap: 8px; }
+  .hook-url code { flex: 1; background: var(--input); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hint { color: var(--muted); font-size: 12.5px; }
+  .hint code { background: var(--hover); padding: 1px 5px; border-radius: 4px; }
+  .hook-detail { flex: 1; overflow: auto; padding: 16px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; margin-bottom: 14px; font-size: 13px; color: var(--muted); }
+  .meta .path { font: 600 14px var(--mono); color: var(--text); word-break: break-all; }
+  .section { margin-bottom: 18px; }
+  .section h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; overflow: auto; }
+  .try { margin-top: 14px; text-align: left; display: inline-block; max-width: 100%; }
+
+  /* modal + toast */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 10; padding: 16px; animation: fade .12s; }
+  @keyframes fade { from { opacity: 0; } }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; width: min(720px, 100%); max-height: 90vh; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); }
+  .modal h3 { margin: 0; font-size: 15px; }
+  .modal p { margin: 0; color: var(--muted); font-size: 13px; }
+  .modal textarea { width: 100%; height: 240px; font: 13px/1.5 var(--mono); resize: vertical; }
+  .modal .actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+  .modal .actions .err { flex: 1; color: var(--bad); font-size: 13px; }
+  .toast { position: fixed; bottom: 16px; right: 16px; background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px; padding: 10px 14px; max-width: 420px; font-size: 13px; box-shadow: var(--shadow); z-index: 20; animation: rise .15s ease-out; }
+  @keyframes rise { from { transform: translateY(8px); opacity: 0; } }
+  .toast ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
+
+  @media (max-width: 760px) {
+    body { flex-direction: column; }
+    aside { width: 100%; max-height: 34vh; border-right: none; border-bottom: 1px solid var(--border); }
+    .bar { flex-wrap: wrap; }
+    .bar #url { flex-basis: 100%; order: -1; }
+    .tabs { flex-wrap: wrap; padding: 0 10px; }
+    .tabs .spacer { display: none; }
+    .status-line { padding: 6px 0; }
+    .namebar { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<aside>
+  <header>
+    <div class="logo"><i>➜</i>Courier</div>
+    <button class="ghost" id="varsBtn" title="Variables — use {{name}} anywhere">{ }</button>
+    <button class="ghost" id="themeBtn" title="Theme"></button>
+    <button class="ghost" id="newBtn" title="New request (⌘/Ctrl + K)">＋</button>
+  </header>
+  <div class="side-tabs">
+    <button data-side="saved" class="active">Saved</button>
+    <button data-side="history">History</button>
+    <button data-side="hooks">Webhooks<span class="badge hidden" id="hookBadge"></span></button>
+  </div>
+  <div class="side-search" id="sideSearch"><input id="search" placeholder="Filter…" spellcheck="false"></div>
+  <div class="side-list" id="sideList"></div>
+</aside>
+
+<main>
+  <!-- request builder -->
+  <div class="view" id="reqView">
+    <div class="namebar">
+      <input id="name" placeholder="Untitled request">
+      <button class="ghost" id="copyCurlBtn" title="Copy this request as a curl command">Copy as cURL</button>
+      <button class="ghost" id="curlBtn" title="Import a curl command">Import cURL</button>
+    </div>
+    <div class="bar">
+      <select id="method">
+        <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option>
+        <option>DELETE</option><option>HEAD</option><option>OPTIONS</option>
+      </select>
+      <input id="url" placeholder="https://api.example.com/users  — or paste a curl command" spellcheck="false" autocomplete="off">
+      <button class="primary" id="sendBtn" title="⌘/Ctrl + Enter">Send</button>
+      <button id="saveBtn" title="⌘/Ctrl + S">Save</button>
+    </div>
+
+    <div class="split" id="split">
+      <section class="pane" id="reqPane">
+        <div class="tabs" data-group="req">
+          <button data-tab="params" class="active">Params<span class="count" id="cParams"></span></button>
+          <button data-tab="headers">Headers<span class="count" id="cHeaders"></span></button>
+          <button data-tab="body">Body<span class="count" id="cBody"></span></button>
+        </div>
+        <div class="tab-body" data-panel="params"><table class="kv" id="paramsTable"></table></div>
+        <div class="tab-body hidden" data-panel="headers"><table class="kv" id="headersTable"></table></div>
+        <div class="tab-body hidden" data-panel="body">
+          <div class="body-types">
+            <label><input type="radio" name="bt" value="none" checked> none</label>
+            <label><input type="radio" name="bt" value="json"> JSON</label>
+            <label><input type="radio" name="bt" value="text"> raw text</label>
+            <label><input type="radio" name="bt" value="form"> x-www-form-urlencoded</label>
+            <span style="flex:1"></span>
+            <button id="beautifyBtn" class="hidden">Beautify</button>
+          </div>
+          <textarea class="code hidden" id="bodyText" spellcheck="false"></textarea>
+          <table class="kv hidden" id="formTable"></table>
+          <div class="empty" id="bodyNone">This request has no body.</div>
+        </div>
+      </section>
+
+      <div class="resizer" id="resizer" title="Drag to resize"></div>
+
+      <section class="pane" id="resPane">
+        <div class="tabs" data-group="res">
+          <button data-tab="rbody" class="active">Response</button>
+          <button data-tab="rheaders">Headers<span class="count" id="cRes"></span></button>
+          <span class="spacer"></span>
+          <span id="resTools" class="hidden">
+            <span class="seg"><button data-fmt="pretty" class="on">Pretty</button><button data-fmt="raw">Raw</button></span>
+            <button class="ghost" id="copyResBtn">Copy</button>
+          </span>
+          <div class="status-line" id="statusLine"></div>
+        </div>
+        <div class="tab-body" data-panel="rbody" id="resBody">
+          <div class="placeholder"><div>Enter a URL and hit <b>Send</b><br>
+            <kbd>⌘/Ctrl</kbd> + <kbd>Enter</kbd> send · <kbd>⌘/Ctrl</kbd> + <kbd>S</kbd> save · <kbd>⌘/Ctrl</kbd> + <kbd>K</kbd> new<br>
+            Paste a curl command into the URL bar to import it</div></div>
+        </div>
+        <div class="tab-body hidden" data-panel="rheaders" id="resHeaders"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- webhook debugger -->
+  <div class="view hidden" id="hookView">
+    <div class="hook-head">
+      <h2><span class="live" id="liveDot"></span> Webhook URL</h2>
+      <div class="hook-url">
+        <code id="hookUrl"></code>
+        <button class="primary" id="copyHookBtn">Copy</button>
+        <button id="newHookBtn" title="Generate a fresh URL">New URL</button>
+        <button id="clearHookBtn">Clear</button>
+      </div>
+      <div class="hint">Any method, any sub-path (<code>…/stripe</code>, <code>…/github?x=1</code>). Requests show up here live.
+        <span id="tunnelHint">To receive webhooks from the internet, expose Courier with a tunnel, e.g. <code>cloudflared tunnel --url http://localhost:7878</code>.</span></div>
+    </div>
+    <div class="hook-detail" id="hookDetail"></div>
+  </div>
+</main>
+
+<div class="modal-bg hidden" id="curlModal">
+  <div class="modal">
+    <h3>Import cURL</h3>
+    <p>Paste a curl command. Method, URL, params, headers, auth and body are filled in for you.</p>
+    <textarea id="curlInput" spellcheck="false" placeholder="curl -X POST https://api.example.com/users \&#10;  -H 'Content-Type: application/json' \&#10;  -d '{&quot;name&quot;: &quot;Ada&quot;}'"></textarea>
+    <div class="actions">
+      <span class="err" id="curlErr"></span>
+      <button id="curlCancel">Cancel</button>
+      <button class="primary" id="curlImport">Import</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="varsModal">
+  <div class="modal">
+    <h3>Variables</h3>
+    <p>Use <code>{{name}}</code> in the URL, headers or body — e.g. <code>{{baseUrl}}/users</code> or <code>Bearer {{token}}</code>. Values are swapped in when you send.</p>
+    <table class="kv" id="varsTable"></table>
+    <div class="actions"><button class="primary" id="varsDone">Done</button></div>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const methodColor = { GET: '#2b8a3e', POST: '#d9480f', PUT: '#1c7ed6', PATCH: '#7048e8', DELETE: '#c92a2a', HEAD: '#868e96', OPTIONS: '#868e96' };
+const ls = {
+  get(k) { try { return localStorage.getItem('courier.' + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem('courier.' + k, v); } catch { } },
+};
+
+let store = { saved: [], history: [], vars: [], hookId: null };
+let side = 'saved';
+let current = blankRequest();
+let inflight = null;
+let lastResponse = null;
+let resFormat = 'pretty';
+let hooks = [];
+let hookSel = null;
+let hookUnread = 0;
+let hookSource = null;
+
+function blankRequest() {
+  return { id: null, name: '', method: 'GET', url: '', params: [], headers: [], bodyType: 'none', body: '', form: [] };
+}
+
+// ---------- persistence ----------
+let saveTimer;
+function persist() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const clean = { ...store, vars: store.vars.filter((r) => r.k || r.v) };
+    fetch('/api/state', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clean) })
+      .catch((e) => console.error('persist failed', e));
+  }, 250);
+}
+
+// ---------- helpers ----------
+let toastTimer;
+function toast(html, ms = 2500) {
+  document.querySelector('.toast')?.remove();
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = html;
+  el.onclick = () => el.remove();
+  document.body.appendChild(el);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.remove(), ms);
+}
+async function copy(text, what = 'Copied') {
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const t = document.createElement('textarea');
+    t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove();
+  }
+  toast(`<b>${esc(what)} ✓</b>`, 1500);
+}
+function fmtSize(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1024 / 1024).toFixed(2) + ' MB';
+}
+function ago(ts) {
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 5) return 'just now';
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return new Date(ts).toLocaleDateString();
+}
+function highlightJson(text) {
+  return esc(text).replace(
+    /(&quot;(?:\\u[a-fA-F0-9]{4}|\\[^u]|(?!&quot;)[^\\])*&quot;(\s*:)?|\b(?:true|false)\b|\bnull\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
+    (m) => {
+      let c = 'jn';
+      if (m.startsWith('&quot;')) c = /:$/.test(m) ? 'jk' : 'js';
+      else if (m === 'true' || m === 'false') c = 'jb';
+      else if (m === 'null') c = 'jz';
+      return `<span class="${c}">${m}</span>`;
+    });
+}
+function prettyBody(body) {
+  try { return highlightJson(JSON.stringify(JSON.parse(body), null, 2)); }
+  catch { return esc(body); }
+}
+const statusClass = (s) => (s === 'ERR' ? 'serr' : 's' + String(s)[0]);
+
+// ---------- theme ----------
+const themes = ['auto', 'light', 'dark'];
+const themeIcon = { auto: '◐', light: '☀', dark: '☾' };
+function applyTheme(t) {
+  if (t === 'auto') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = t;
+  $('#themeBtn').textContent = themeIcon[t];
+  $('#themeBtn').title = `Theme: ${t}`;
+  ls.set('theme', t === 'auto' ? '' : t);
+}
+$('#themeBtn').onclick = () => {
+  const cur = document.documentElement.dataset.theme || 'auto';
+  applyTheme(themes[(themes.indexOf(cur) + 1) % themes.length]);
+};
+applyTheme(document.documentElement.dataset.theme || 'auto');
+
+// ---------- key/value tables ----------
+function withBlank(rows) {
+  const r = rows.filter((x) => x.k || x.v);
+  r.push({ on: true, k: '', v: '' });
+  return r;
+}
+function renderKV(table, rows, onChange, placeholders = ['Key', 'Value']) {
+  table.innerHTML = '';
+  rows.forEach((row, i) => {
+    const isLast = i === rows.length - 1;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><input type="checkbox" ${row.on ? 'checked' : ''} ${isLast ? 'disabled' : ''}></td>
+      <td><input type="text" placeholder="${placeholders[0]}" value="${esc(row.k)}" spellcheck="false"></td>
+      <td><input type="text" placeholder="${placeholders[1]}" value="${esc(row.v)}" spellcheck="false"></td>
+      <td>${isLast ? '' : '<button class="icon" title="Remove">✕</button>'}</td>`;
+    const [cb, k, v] = tr.querySelectorAll('input');
+    cb.onchange = () => { row.on = cb.checked; onChange(false); };
+    const edit = () => {
+      row.k = k.value; row.v = v.value;
+      if (isLast && (row.k || row.v)) { rows.push({ on: true, k: '', v: '' }); onChange(true, [k, v].indexOf(document.activeElement)); return; }
+      onChange(false);
+    };
+    k.oninput = edit; v.oninput = edit;
+    const del = tr.querySelector('button');
+    if (del) del.onclick = () => { rows.splice(i, 1); onChange(true); };
+    table.appendChild(tr);
+  });
+}
+// Binds a key/value table to a row array, re-rendering (and keeping focus) when a row is added or removed.
+function kvTable(table, getRows, after, placeholders) {
+  const draw = () => {
+    const rows = getRows();
+    renderKV(table, rows, (rerender, col = -1) => {
+      after();
+      if (!rerender) return;
+      const n = rows.length - 2;
+      draw();
+      const inp = col >= 0 && table.rows[n]?.querySelectorAll('input[type=text]')[col];
+      if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+    }, placeholders);
+  };
+  return draw;
+}
+const drawParams = kvTable($('#paramsTable'), () => current.params, () => { syncUrlFromParams(); counts(); });
+const drawHeaders = kvTable($('#headersTable'), () => current.headers, counts, ['Header', 'Value']);
+const drawForm = kvTable($('#formTable'), () => current.form, counts);
+const drawVars = kvTable($('#varsTable'), () => store.vars, persist, ['name', 'value']);
+
+// ---------- URL <-> params ----------
+function splitUrl(url) {
+  const hash = url.indexOf('#');
+  const frag = hash >= 0 ? url.slice(hash) : '';
+  const noHash = hash >= 0 ? url.slice(0, hash) : url;
+  const q = noHash.indexOf('?');
+  return { base: q >= 0 ? noHash.slice(0, q) : noHash, query: q >= 0 ? noHash.slice(q + 1) : '', frag };
+}
+const dec = (s) => { try { return decodeURIComponent(s.replace(/\+/g, ' ')); } catch { return s; } };
+const encQ = (s) => encodeURIComponent(s).replace(/%7B/g, '{').replace(/%7D/g, '}');
+const parseQuery = (q) => q ? q.split('&').filter(Boolean).map((p) => {
+  const i = p.indexOf('=');
+  return { on: true, k: dec(i >= 0 ? p.slice(0, i) : p), v: i >= 0 ? dec(p.slice(i + 1)) : '' };
+}) : [];
+
+function syncParamsFromUrl() {
+  const disabled = current.params.filter((p) => !p.on && (p.k || p.v));
+  current.params = withBlank([...parseQuery(splitUrl(current.url).query), ...disabled]);
+  drawParams();
+}
+function syncUrlFromParams() {
+  const { base, frag } = splitUrl(current.url);
+  const q = current.params.filter((p) => p.on && (p.k || p.v))
+    .map((p) => encQ(p.k) + (p.v !== '' ? '=' + encQ(p.v) : '')).join('&');
+  current.url = base + (q ? '?' + q : '') + frag;
+  $('#url').value = current.url;
+}
+
+function counts() {
+  const n = (rows) => rows.filter((r) => r.on && r.k).length || '';
+  $('#cParams').textContent = n(current.params);
+  $('#cHeaders').textContent = n(current.headers);
+  $('#cBody').textContent = current.bodyType === 'none' ? '' : '•';
+}
+
+// ---------- body ----------
+function drawBody() {
+  const t = current.bodyType;
+  document.querySelectorAll('input[name=bt]').forEach((r) => (r.checked = r.value === t));
+  $('#bodyText').classList.toggle('hidden', t !== 'json' && t !== 'text');
+  $('#formTable').classList.toggle('hidden', t !== 'form');
+  $('#bodyNone').classList.toggle('hidden', t !== 'none');
+  $('#beautifyBtn').classList.toggle('hidden', t !== 'json');
+  $('#bodyText').value = current.body;
+  $('#bodyText').placeholder = t === 'json' ? '{\n  "name": "value"\n}' : '';
+  if (t === 'form') drawForm();
+  counts();
+}
+
+// ---------- load / reset ----------
+function load(req) {
+  current = structuredClone(req);
+  current.params = withBlank(current.params || []);
+  current.headers = withBlank(current.headers || []);
+  current.form = withBlank(current.form || []);
+  $('#name').value = current.name || '';
+  $('#method').value = current.method;
+  $('#url').value = current.url;
+  colorMethod();
+  syncParamsFromUrl();
+  drawHeaders();
+  drawBody();
+  if (side === 'hooks') setSide('saved'); else drawSide();
+}
+function colorMethod() { $('#method').style.color = methodColor[$('#method').value] || ''; }
+
+function snapshot() {
+  const clean = (rows) => rows.filter((r) => r.k || r.v).map(({ on, k, v }) => ({ on, k, v }));
+  return {
+    id: current.id, name: current.name, method: current.method, url: current.url,
+    params: clean(current.params), headers: clean(current.headers),
+    bodyType: current.bodyType, body: current.body, form: clean(current.form),
+  };
+}
+
+// ---------- sidebar ----------
+function setSide(s) {
+  side = s;
+  $('#reqView').classList.toggle('hidden', s === 'hooks');
+  $('#hookView').classList.toggle('hidden', s !== 'hooks');
+  $('#sideSearch').classList.toggle('hidden', s === 'hooks');
+  if (s === 'hooks') { hookUnread = 0; drawHookBadge(); drawHookDetail(); }
+  drawSide();
+}
+
+// freshId: a just-arrived webhook to flash in the list.
+function drawSide(freshId) {
+  document.querySelectorAll('.side-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.side === side));
+  if (side === 'hooks') return drawHookList(freshId);
+  const list = $('#sideList');
+  const q = $('#search').value.trim().toLowerCase();
+  const all = side === 'saved' ? store.saved : store.history;
+  const items = all.map((it, i) => [it, i])
+    .filter(([it]) => !q || `${it.method} ${it.name || ''} ${it.url}`.toLowerCase().includes(q));
+  list.innerHTML = '';
+  if (side === 'history' && all.length) {
+    const foot = document.createElement('div');
+    foot.className = 'side-foot';
+    foot.innerHTML = '<button class="ghost" style="font-size:12px">Clear history</button>';
+    foot.querySelector('button').onclick = () => { store.history = []; persist(); drawSide(); };
+    list.appendChild(foot);
+  }
+  if (!items.length) {
+    list.insertAdjacentHTML('beforeend', `<div class="empty">${q ? 'No matches.'
+      : side === 'saved' ? 'No saved requests yet.<br>Hit <b>Save</b> to keep one.' : 'No history yet.'}</div>`);
+    return;
+  }
+  for (const [it, i] of items) {
+    const el = document.createElement('div');
+    el.className = 'side-item' + (side === 'saved' && it.id && it.id === current.id ? ' active' : '');
+    const label = side === 'saved' ? (it.name || it.url || 'Untitled') : it.url;
+    const sub = side === 'history'
+      ? `<span class="t" title="${it.at ? new Date(it.at).toLocaleString() : ''}"><span class="${statusClass(it.status)}">${esc(it.status ?? '')}</span>${it.at ? ' · ' + ago(it.at) : ''}</span>` : '';
+    el.innerHTML = `<span class="m" style="color:${methodColor[it.method] || ''}">${esc(it.method)}</span>
+      <span class="n" title="${esc(it.url)}">${esc(label)}</span>${sub}<button class="icon" title="Delete">✕</button>`;
+    el.onclick = () => {
+      const req = structuredClone(it);
+      if (side === 'history') { req.id = null; delete req.status; delete req.at; }
+      load(req);
+    };
+    el.querySelector('button').onclick = (e) => {
+      e.stopPropagation();
+      all.splice(i, 1);
+      if (side === 'saved' && it.id === current.id) current.id = null;
+      persist(); drawSide();
+    };
+    list.appendChild(el);
+  }
+}
+
+function save() {
+  if (!current.name) {
+    current.name = current.url ? `${current.method} ${current.url.replace(/^https?:\/\//, '')}` : 'Untitled';
+    $('#name').value = current.name;
+  }
+  if (!current.id) current.id = uid();
+  const snap = snapshot();
+  const idx = store.saved.findIndex((s) => s.id === snap.id);
+  if (idx >= 0) store.saved[idx] = snap; else store.saved.unshift(snap);
+  persist();
+  setSide('saved');
+  toast('<b>Saved ✓</b> — rename it in the field above the URL', 2000);
+}
+
+// ---------- variables ----------
+function subst(s) {
+  if (!s) return s;
+  const vars = Object.fromEntries(store.vars.filter((v) => v.on && v.k).map((v) => [v.k.trim(), v.v]));
+  return s.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (m, k) => (k in vars ? vars[k] : m));
+}
+
+// Resolves the request into what actually goes over the wire.
+function buildOutgoing() {
+  const headers = current.headers.filter((h) => h.on && h.k).map((h) => [subst(h.k), subst(h.v)]);
+  const has = (name) => headers.some(([k]) => k.toLowerCase() === name);
+  let body = null;
+  if (current.bodyType === 'json' || current.bodyType === 'text') {
+    body = subst(current.body);
+    if (!has('content-type')) headers.push(['Content-Type', current.bodyType === 'json' ? 'application/json' : 'text/plain']);
+  } else if (current.bodyType === 'form') {
+    body = new URLSearchParams(current.form.filter((f) => f.on && f.k).map((f) => [subst(f.k), subst(f.v)])).toString();
+    if (!has('content-type')) headers.push(['Content-Type', 'application/x-www-form-urlencoded']);
+  }
+  return { method: current.method, url: subst(current.url.trim()), headers, body };
+}
+
+// ---------- sending ----------
+async function send() {
+  if (inflight) { inflight.abort(); return; }
+  if (!current.url.trim()) { $('#url').focus(); return; }
+  const out = buildOutgoing();
+
+  inflight = new AbortController();
+  $('#sendBtn').textContent = 'Cancel';
+  $('#statusLine').innerHTML = '<span class="spinner"></span>';
+  $('#resTools').classList.add('hidden');
+
+  let status = null;
+  try {
+    const r = await fetch('/api/send', {
+      method: 'POST', signal: inflight.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(out),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || `Proxy error ${r.status}`);
+    status = data.status;
+    lastResponse = data;
+    drawResponse();
+  } catch (e) {
+    lastResponse = null;
+    if (e.name === 'AbortError') {
+      $('#statusLine').innerHTML = '<span>Cancelled</span>';
+    } else {
+      status = 'ERR';
+      $('#statusLine').innerHTML = '<span class="chip serr">Error</span>';
+      $('#resBody').innerHTML = `<pre class="out serr">${esc(e.message)}</pre>`;
+      $('#resHeaders').innerHTML = '';
+      $('#cRes').textContent = '';
+    }
+  } finally {
+    inflight = null;
+    $('#sendBtn').textContent = 'Send';
+  }
+
+  if (status !== null) {
+    const h = snapshot(); h.id = null; h.status = status; h.at = Date.now();
+    store.history.unshift(h);
+    store.history = store.history.slice(0, 100);
+    persist();
+    if (side === 'history') drawSide();
+  }
+}
+
+function drawResponse() {
+  const d = lastResponse;
+  if (!d) return;
+  $('#statusLine').innerHTML =
+    `<span class="chip ${statusClass(d.status)}">${d.status} ${esc(d.status_text)}</span>` +
+    `<span><b>${d.time_ms}</b> ms</span><span><b>${fmtSize(d.size)}</b></span>`;
+  $('#cRes').textContent = d.headers.length || '';
+  $('#resHeaders').innerHTML = '<table class="hdrs">' +
+    d.headers.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('') + '</table>';
+  $('#resTools').classList.toggle('hidden', d.binary || !d.body);
+  document.querySelectorAll('[data-fmt]').forEach((b) => b.classList.toggle('on', b.dataset.fmt === resFormat));
+
+  if (d.binary) { $('#resBody').innerHTML = `<div class="placeholder">Binary response (${fmtSize(d.size)}) — not displayed.</div>`; return; }
+  if (!d.body) { $('#resBody').innerHTML = '<div class="placeholder">Empty response body</div>'; return; }
+  $('#resBody').innerHTML = `<pre class="out">${resFormat === 'pretty' ? prettyBody(d.body) : esc(d.body)}</pre>`;
+}
+
+// ---------- curl import / export ----------
+// Splits a shell command into argv, handling '...', "...", $'...', backslash escapes and line continuations.
+function shellSplit(s) {
+  s = s.replace(/\\\r?\n/g, ' ').replace(/\^\r?\n/g, ' ');
+  const out = [];
+  let cur = '', has = false, i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (/\s/.test(c)) { if (has) { out.push(cur); cur = ''; has = false; } i++; continue; }
+    has = true;
+    if (c === "'") {
+      const j = s.indexOf("'", i + 1);
+      if (j < 0) throw new Error('Unterminated single quote');
+      cur += s.slice(i + 1, j); i = j + 1;
+    } else if (c === '$' && s[i + 1] === "'") {
+      i += 2;
+      while (i < s.length && s[i] !== "'") {
+        if (s[i] === '\\' && i + 1 < s.length) {
+          const n = s[i + 1];
+          cur += { n: '\n', t: '\t', r: '\r', '\\': '\\', "'": "'", '"': '"' }[n] ?? '\\' + n;
+          i += 2;
+        } else cur += s[i++];
+      }
+      i++;
+    } else if (c === '"') {
+      i++;
+      while (i < s.length && s[i] !== '"') {
+        if (s[i] === '\\' && '"\\$`'.includes(s[i + 1])) { cur += s[i + 1]; i += 2; }
+        else cur += s[i++];
+      }
+      if (i >= s.length) throw new Error('Unterminated double quote');
+      i++;
+    } else if (c === '\\' && i + 1 < s.length) {
+      cur += s[i + 1]; i += 2;
+    } else { cur += c; i++; }
+  }
+  if (has) out.push(cur);
+  return out;
+}
+
+const CURL_SHORT_WITH_ARG = new Set('HdXubAeFomxTwKcErYyzDUCPQt'.split(''));
+const CURL_LONG_WITH_ARG = new Set([
+  'output', 'max-time', 'connect-timeout', 'proxy', 'cacert', 'capath', 'cert', 'key', 'cert-type', 'key-type',
+  'write-out', 'retry', 'retry-delay', 'retry-max-time', 'resolve', 'limit-rate', 'upload-file', 'cookie-jar',
+  'max-redirs', 'interface', 'connect-to', 'proxy-user', 'config', 'range', 'continue-at', 'dump-header',
+  'trace', 'trace-ascii', 'stderr', 'ciphers', 'local-port', 'expect100-timeout', 'unix-socket', 'pass',
+]);
+
+// Picks the body editor (json / form / text) that best fits a raw body and its content type.
+function classifyBody(req, body, ct) {
+  ct = (ct || '').toLowerCase();
+  let parsedJson;
+  try { parsedJson = JSON.parse(body); } catch { }
+  const looksForm = /^[^=&\s{}\[\]]+=[^&]*(&[^=&\s]+=[^&]*)*$/.test(body);
+  if (ct.includes('json') || (!ct && parsedJson !== undefined && typeof parsedJson === 'object')) {
+    req.bodyType = 'json';
+    req.body = parsedJson !== undefined ? JSON.stringify(parsedJson, null, 2) : body;
+  } else if ((ct.includes('x-www-form-urlencoded') || !ct) && looksForm) {
+    req.bodyType = 'form';
+    req.form = parseQuery(body);
+  } else {
+    req.bodyType = 'text';
+    req.body = body;
+  }
+}
+
+function parseCurl(cmd) {
+  const raw = shellSplit(cmd.trim());
+  if (raw[0] !== 'curl') throw new Error('That doesn\'t look like a curl command (it should start with "curl").');
+
+  // Expand combined/attached short flags: -sSL → -s -S -L, -XPOST → -X POST
+  const t = [];
+  for (const a of raw.slice(1)) {
+    if (/^-[A-Za-z0-9#:]{2,}/.test(a) && !a.startsWith('--')) {
+      for (let k = 1; k < a.length; k++) {
+        t.push('-' + a[k]);
+        if (CURL_SHORT_WITH_ARG.has(a[k])) { if (k + 1 < a.length) t.push(a.slice(k + 1)); break; }
+      }
+    } else t.push(a);
+  }
+
+  let method = null, url = null, get = false, head = false;
+  const headers = [], data = [], warnings = [];
+  const utf8b64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
+  const addData = (v, kind) => {
+    if (kind !== 'raw' && v.startsWith('@')) { warnings.push(`Can't read file ${v} — paste its contents into the body.`); return; }
+    data.push(v);
+  };
+
+  for (let i = 0; i < t.length; i++) {
+    let a = t[i], v;
+    const eq = a.match(/^(--[A-Za-z0-9-]+)=([\s\S]*)$/);
+    if (eq) { a = eq[1]; v = eq[2]; }
+    const next = () => (v !== undefined ? v : (t[++i] ?? ''));
+
+    switch (a) {
+      case '-X': case '--request': method = next().toUpperCase(); break;
+      case '-H': case '--header': {
+        const h = next(), c = h.indexOf(':');
+        if (c > 0) headers.push({ on: true, k: h.slice(0, c).trim(), v: h.slice(c + 1).trim() });
+        break;
+      }
+      case '-d': case '--data': case '--data-ascii': case '--data-binary': addData(next(), 'data'); break;
+      case '--data-raw': addData(next(), 'raw'); break;
+      case '--data-urlencode': {
+        const s = next(), e = s.indexOf('=');
+        if (s.startsWith('@') || (e > 0 && s[e + 1] === '@')) { warnings.push(`Can't read file in --data-urlencode ${s}`); break; }
+        data.push(e > 0 ? s.slice(0, e) + '=' + encodeURIComponent(s.slice(e + 1))
+          : encodeURIComponent(e === 0 ? s.slice(1) : s));
+        break;
+      }
+      case '--json':
+        addData(next(), 'data');
+        headers.push({ on: true, k: 'Content-Type', v: 'application/json' }, { on: true, k: 'Accept', v: 'application/json' });
+        break;
+      case '-u': case '--user': headers.push({ on: true, k: 'Authorization', v: 'Basic ' + utf8b64(next()) }); break;
+      case '--oauth2-bearer': headers.push({ on: true, k: 'Authorization', v: 'Bearer ' + next() }); break;
+      case '-A': case '--user-agent': headers.push({ on: true, k: 'User-Agent', v: next() }); break;
+      case '-e': case '--referer': headers.push({ on: true, k: 'Referer', v: next() }); break;
+      case '-b': case '--cookie': {
+        const c = next();
+        if (c.includes('=')) headers.push({ on: true, k: 'Cookie', v: c });
+        else warnings.push(`Cookie file ${c} ignored.`);
+        break;
+      }
+      case '-G': case '--get': get = true; break;
+      case '-I': case '--head': head = true; break;
+      case '--url': url = next(); break;
+      case '-F': case '--form': case '--form-string':
+        next(); warnings.push('Multipart form fields (-F) aren\'t supported and were skipped.'); break;
+      case '-T': case '--upload-file': warnings.push(`Upload file ${next()} ignored.`); break;
+      default:
+        if (a.startsWith('--')) { if (CURL_LONG_WITH_ARG.has(a.slice(2))) next(); }
+        else if (a.startsWith('-') && a.length === 2) { if (CURL_SHORT_WITH_ARG.has(a[1])) next(); }
+        else if (url === null) url = a;
+        else warnings.push(`Extra argument "${a}" ignored.`);
+    }
+  }
+  if (!url) throw new Error('No URL found in the curl command.');
+
+  let body = data.length ? data.join('&') : null;
+  if (get && body !== null) { url += (url.includes('?') ? '&' : '?') + body; body = null; }
+  if (!method) method = head ? 'HEAD' : body !== null ? 'POST' : 'GET';
+
+  const req = blankRequest();
+  req.method = method;
+  req.url = url;
+  req.headers = headers;
+  if (body !== null) classifyBody(req, body, headers.find((h) => h.k.toLowerCase() === 'content-type')?.v);
+  return { req, warnings };
+}
+
+function toCurl() {
+  const o = buildOutgoing();
+  const q = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
+  const parts = ['curl'];
+  if (o.method !== 'GET' || o.body !== null) parts.push('-X ' + o.method);
+  parts.push(q(o.url));
+  for (const [k, v] of o.headers) parts.push('-H ' + q(`${k}: ${v}`));
+  if (o.body !== null) parts.push('--data-raw ' + q(o.body));
+  return parts.join(' \\\n  ');
+}
+
+function importCurl(text) {
+  const { req, warnings } = parseCurl(text);
+  load(req);
+  const tab = req.bodyType !== 'none' ? 'body' : req.headers.length ? 'headers' : 'params';
+  document.querySelector(`.tabs[data-group=req] button[data-tab=${tab}]`).click();
+  toast(warnings.length
+    ? `<b>Imported with notes:</b><ul>${warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>`
+    : '<b>cURL imported ✓</b>', warnings.length ? 8000 : 2500);
+}
+
+// ---------- modals ----------
+function openModal(id) { $(id).classList.remove('hidden'); }
+function closeModals() { document.querySelectorAll('.modal-bg').forEach((m) => m.classList.add('hidden')); }
+function openCurlModal(prefill = '') {
+  $('#curlInput').value = prefill;
+  $('#curlErr').textContent = '';
+  openModal('#curlModal');
+  $('#curlInput').focus();
+}
+document.querySelectorAll('.modal-bg').forEach((m) => (m.onclick = (e) => { if (e.target === m) closeModals(); }));
+
+// ---------- webhooks ----------
+const hookUrl = () => `${location.origin}/hook/${store.hookId}`;
+const hookMethodColor = (m) => methodColor[m] || 'var(--muted)';
+
+function connectHooks() {
+  hookSource?.close();
+  hooks = []; hookSel = null;
+  $('#hookUrl').textContent = hookUrl();
+  fetch(`/api/hooks/${store.hookId}`).then((r) => r.json()).then((list) => {
+    hooks = list;
+    if (side === 'hooks') { drawSide(); drawHookDetail(); }
+  }).catch(() => { });
+  hookSource = new EventSource(`/api/hooks/${store.hookId}/stream`);
+  hookSource.onopen = () => $('#liveDot').classList.add('on');
+  hookSource.onerror = () => $('#liveDot').classList.remove('on');
+  hookSource.onmessage = (e) => {
+    const cap = JSON.parse(e.data);
+    hooks.unshift(cap);
+    hooks = hooks.slice(0, 100);
+    if (side === 'hooks') {
+      if (!hookSel) hookSel = cap.id;
+      drawSide(cap.id);
+      drawHookDetail();
+    } else { hookUnread++; drawHookBadge(); }
+  };
+}
+function drawHookBadge() {
+  $('#hookBadge').textContent = hookUnread > 99 ? '99+' : hookUnread;
+  $('#hookBadge').classList.toggle('hidden', !hookUnread);
+}
+function drawHookList(freshId) {
+  const list = $('#sideList');
+  if (!hooks.length) { list.innerHTML = '<div class="empty">Waiting for requests…</div>'; return; }
+  list.innerHTML = '';
+  for (const h of hooks) {
+    const el = document.createElement('div');
+    el.className = 'side-item' + (h.id === hookSel ? ' active' : '') + (h.id === freshId ? ' fresh' : '');
+    const sub = h.path.split('/').slice(3).join('/');
+    el.innerHTML = `<span class="m" style="color:${hookMethodColor(h.method)}">${esc(h.method)}</span>
+      <span class="n">/${esc(sub)}${h.query ? '?' + esc(h.query) : ''}</span>
+      <span class="t" title="${new Date(h.at).toLocaleString()}">${ago(h.at)}</span>`;
+    el.onclick = () => { hookSel = h.id; drawSide(); drawHookDetail(); };
+    list.appendChild(el);
+  }
+}
+function drawHookDetail() {
+  const box = $('#hookDetail');
+  const h = hooks.find((x) => x.id === hookSel) || null;
+  if (!h) {
+    const example = `curl -X POST ${hookUrl()}/test \\\n  -H 'Content-Type: application/json' \\\n  -d '{"hello": "world"}'`;
+    box.innerHTML = `<div class="placeholder"><div>
+      <div class="spinner" style="margin-bottom:10px"></div><br>
+      ${hooks.length ? 'Pick a request on the left.' : 'Waiting for the first request…'}<br>
+      <div class="try"><div class="section"><h4>Try it <button class="ghost" id="copyTry">Copy</button></h4>
+      <pre class="out card">${esc(example)}</pre></div></div></div></div>`;
+    $('#copyTry').onclick = () => copy(example, 'Command copied');
+    return;
+  }
+  const ct = h.headers.find(([k]) => k === 'content-type')?.[1] || '';
+  const query = parseQuery(h.query);
+  const table = (rows) => `<table class="hdrs">${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`;
+  let body;
+  if (h.binary) body = `<div class="hint">Binary body (${fmtSize(h.size)}) — not displayed.</div>`;
+  else if (!h.body) body = '<div class="hint">No body.</div>';
+  else body = `<pre class="out">${prettyBody(h.body)}</pre>${h.truncated ? `<div class="hint" style="margin-top:8px">Truncated — showing first 512 KB of ${fmtSize(h.size)}.</div>` : ''}`;
+
+  box.innerHTML = `
+    <div class="meta">
+      <span class="chip" style="color:${hookMethodColor(h.method)}">${esc(h.method)}</span>
+      <span class="path">${esc(h.path)}${h.query ? '?' + esc(h.query) : ''}</span>
+      <span title="${new Date(h.at).toLocaleString()}">${new Date(h.at).toLocaleTimeString()} · ${ago(h.at)}</span>
+      <span>from ${esc(h.ip)}</span><span>${fmtSize(h.size)}</span>
+      <span style="flex:1"></span>
+      <button id="replayBtn" title="Load this request into the builder">Open in builder</button>
+    </div>
+    ${query.length ? `<div class="section"><h4>Query</h4><div class="card">${table(query.map((p) => [p.k, p.v]))}</div></div>` : ''}
+    <div class="section"><h4>Body ${ct ? `<span style="text-transform:none;letter-spacing:0">· ${esc(ct)}</span>` : ''}
+      ${h.body ? '<button class="ghost" id="copyHookBody">Copy</button>' : ''}</h4><div class="card">${body}</div></div>
+    <div class="section"><h4>Headers (${h.headers.length})</h4><div class="card">${table(h.headers)}</div></div>`;
+  $('#copyHookBody')?.addEventListener('click', () => copy(h.body, 'Body copied'));
+  $('#replayBtn').onclick = () => replayHook(h);
+}
+
+// Opens a captured webhook in the request builder so it can be re-sent anywhere.
+function replayHook(h) {
+  const skip = new Set(['host', 'content-length', 'connection', 'accept-encoding', 'transfer-encoding']);
+  const req = blankRequest();
+  req.name = `Webhook ${h.method} ${h.path.split('/').slice(3).join('/') || '/'}`;
+  req.method = h.method;
+  req.url = location.origin + h.path + (h.query ? '?' + h.query : '');
+  req.headers = h.headers.filter(([k]) => !skip.has(k) && !k.startsWith('x-forwarded-')).map(([k, v]) => ({ on: true, k, v }));
+  if (h.body && !h.binary) classifyBody(req, h.body, h.headers.find(([k]) => k === 'content-type')?.[1]);
+  load(req);
+  toast('<b>Loaded into builder</b> — change the URL to replay it against your app', 3500);
+  setTimeout(() => $('#url').focus(), 0);
+}
+
+// ---------- resizable split ----------
+(() => {
+  const split = $('#split'), pane = $('#reqPane'), bar = $('#resizer');
+  const saved = parseFloat(ls.get('split'));
+  if (saved > 10 && saved < 90) pane.style.flexBasis = saved + '%';
+  bar.onpointerdown = (e) => {
+    bar.setPointerCapture(e.pointerId);
+    bar.classList.add('drag');
+    const rect = split.getBoundingClientRect();
+    bar.onpointermove = (ev) => {
+      const pct = Math.min(85, Math.max(15, ((ev.clientY - rect.top) / rect.height) * 100));
+      pane.style.flexBasis = pct + '%';
+    };
+    bar.onpointerup = () => {
+      bar.onpointermove = null;
+      bar.classList.remove('drag');
+      ls.set('split', parseFloat(pane.style.flexBasis));
+    };
+  };
+})();
+
+// ---------- wiring ----------
+document.querySelectorAll('.tabs').forEach((tabs) => {
+  const pane = tabs.parentElement;
+  tabs.querySelectorAll(':scope > button').forEach((b) => (b.onclick = () => {
+    tabs.querySelectorAll(':scope > button').forEach((x) => x.classList.toggle('active', x === b));
+    pane.querySelectorAll('[data-panel]').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== b.dataset.tab));
+  }));
+});
+document.querySelectorAll('.side-tabs button').forEach((b) => (b.onclick = () => setSide(b.dataset.side)));
+$('#search').oninput = () => drawSide();
+
+$('#method').onchange = () => { current.method = $('#method').value; colorMethod(); };
+$('#url').oninput = () => { current.url = $('#url').value; syncParamsFromUrl(); counts(); };
+$('#url').onkeydown = (e) => { if (e.key === 'Enter') send(); };
+$('#url').addEventListener('paste', (e) => {
+  const text = e.clipboardData?.getData('text') || '';
+  if (!/^\s*curl\s/.test(text)) return;
+  e.preventDefault();
+  try { importCurl(text); } catch (err) { openCurlModal(text); $('#curlErr').textContent = err.message; }
+});
+$('#name').oninput = () => { current.name = $('#name').value; };
+$('#bodyText').oninput = () => { current.body = $('#bodyText').value; };
+$('#bodyText').onkeydown = (e) => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const t = e.target, s = t.selectionStart;
+    t.setRangeText('  ', s, t.selectionEnd, 'end');
+    current.body = t.value;
+  }
+};
+document.querySelectorAll('input[name=bt]').forEach((r) => (r.onchange = () => {
+  current.bodyType = r.value;
+  if (current.method === 'GET' && r.value !== 'none') { current.method = 'POST'; $('#method').value = 'POST'; colorMethod(); }
+  drawBody();
+}));
+$('#beautifyBtn').onclick = () => {
+  try { current.body = JSON.stringify(JSON.parse(current.body), null, 2); $('#bodyText').value = current.body; }
+  catch (e) { toast(`<b>Invalid JSON</b><ul><li>${esc(e.message)}</li></ul>`, 4000); }
+};
+document.querySelectorAll('[data-fmt]').forEach((b) => (b.onclick = () => { resFormat = b.dataset.fmt; drawResponse(); }));
+$('#copyResBtn').onclick = () => lastResponse && copy(resFormat === 'pretty'
+  ? (() => { try { return JSON.stringify(JSON.parse(lastResponse.body), null, 2); } catch { return lastResponse.body; } })()
+  : lastResponse.body, 'Response copied');
+
+$('#sendBtn').onclick = send;
+$('#saveBtn').onclick = save;
+$('#newBtn').onclick = () => { load(blankRequest()); $('#url').focus(); };
+$('#copyCurlBtn').onclick = () => (current.url.trim() ? copy(toCurl(), 'cURL copied') : toast('<b>Add a URL first</b>'));
+$('#curlBtn').onclick = () => openCurlModal();
+$('#curlCancel').onclick = closeModals;
+$('#curlImport').onclick = () => {
+  try { importCurl($('#curlInput').value); closeModals(); }
+  catch (e) { $('#curlErr').textContent = e.message; }
+};
+$('#curlInput').onkeydown = (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); $('#curlImport').click(); }
+};
+$('#varsBtn').onclick = () => { store.vars = withBlank(store.vars); drawVars(); openModal('#varsModal'); };
+$('#varsDone').onclick = closeModals;
+
+$('#copyHookBtn').onclick = () => copy(hookUrl(), 'Webhook URL copied');
+$('#newHookBtn').onclick = () => { store.hookId = uid(); persist(); connectHooks(); drawSide(); drawHookDetail(); };
+$('#clearHookBtn').onclick = async () => {
+  await fetch(`/api/hooks/${store.hookId}`, { method: 'DELETE' });
+  hooks = []; hookSel = null; drawSide(); drawHookDetail();
+};
+
+document.addEventListener('keydown', (e) => {
+  const mod = e.metaKey || e.ctrlKey;
+  if (e.key === 'Escape') closeModals();
+  if (!$('#curlModal').classList.contains('hidden') || !$('#varsModal').classList.contains('hidden')) return;
+  if (mod && e.key === 'Enter') { e.preventDefault(); send(); }
+  if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); save(); }
+  if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#newBtn').click(); }
+});
+setInterval(() => { if (side !== 'saved') drawSide(); }, 30000);
+
+(async () => {
+  try {
+    const s = await (await fetch('/api/state')).json();
+    store = { saved: s.saved || [], history: s.history || [], vars: s.vars || [], hookId: s.hookId || null };
+  } catch (e) { console.error('load state failed', e); }
+  if (!store.hookId) { store.hookId = uid(); persist(); }
+  if (!/^(localhost|127\.|\[::1\])/.test(location.hostname)) $('#tunnelHint').classList.add('hidden');
+  load(blankRequest());
+  connectHooks();
+  $('#url').focus();
+})();
+</script>
+</body>
+</html>
